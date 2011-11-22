@@ -2,6 +2,8 @@ import kivy
 kivy.require('1.0.9') # replace with your current kivy version !
 
 from kivy.app import App
+from kivy.graphics.transformation import Matrix
+from kivy.uix.slider import Slider
 from kivy.uix.button import Button
 from kivy.uix.widget import Widget
 from kivy.uix.scatter import Scatter
@@ -152,18 +154,24 @@ for img in [
 
 class Menu:
     def __init__(self):
-        self.layout = GridLayout(cols=1)#anchor_x='right', anchor_y='top')
-        button =Button(text='New Track')
+        self.layout = FloatLayout(size=(200,600))
+        ypos = 0
+        
+        size = (0.1,0.1)
+        button =Button(text='New Track', size_hint=size,pos_hint={'x':.0, 'y':.1*ypos})
+        ypos += 1
         button.bind(on_press=self.addTrack)
         self.layout.add_widget(button)
-        button2 =Button(text='New Point On Track')
+        button2 =Button(text='New Point On Track', size_hint=size,pos_hint={'x':.0, 'y':.1*ypos})
+        ypos += 1
         button2.bind(on_press=self.addPoint)
         self.layout.add_widget(button2)
         for classification in classesToColours.keys():
-            button = Button(text=classification)
+            button = Button(text=classification, size_hint=size,pos_hint={'x':.0, 'y':.1*ypos})
+            ypos += 1
             button.bind(on_press=self.setClass(classification))
             self.layout.add_widget(button)
-        self.showStatsButton = Button(text='Print Statistics')
+        self.showStatsButton = Button(text='Print Statistics', size_hint=size,pos_hint={'x':.0, 'y':.1*ypos})
         self.layout.add_widget(self.showStatsButton)
 
     def onShowStats(self, callback):
@@ -199,17 +207,35 @@ class MyApp(App):
         self.tracks = []
         self.activeTrack = None
         self.currentLayer = 0
-        self.appstructure = GridLayout(cols=2)
+        self.appstructure = FloatLayout(size=(800,600))
         self.menu = Menu()
         self.menu.onNewTrack(self.newTrack)
         self.menu.onNewPoint(self.newPoint)
         self.menu.onSetClass(self.setClass)
         self.menu.onShowStats(self.showStats)
-        self.core = Widget()
+        self.core = Scatter(auto_bring_to_front=False)
         self.core.add_widget(self.getCurrentLayer().getContents())
         self.appstructure.add_widget(self.core)
         self.appstructure.add_widget(self.menu.getContents())
+        self.zoomSlider = Slider(orientation='vertical', min=1, max=10, size_hint=(0.05,1),pos_hint={'x':0.95})
+        self.zoomSlider.bind(on_touch_move=self.on_touch_move)
+        self.zoomSlider.bind(on_touch_down=self.on_touch_down)
+        self.zoomSlider.bind(on_touch_up=self.on_touch_up)
+        self.appstructure.add_widget(self.zoomSlider)
+        self.zooming = False
         return self.appstructure
+
+    def on_touch_down(self, slider, ev):
+        if (slider.collide_point(ev.pos[0], ev.pos[1])):
+            self.zooming = True
+
+    def on_touch_move(self, slider, ev):
+        if (self.zooming):
+            zoom = self.zoomSlider.value
+            self.core.scale = zoom
+
+    def on_touch_up(self, slider, ev):
+        self.zooming = False
 
     def showStats(self, *args):
         classCounts = {}
