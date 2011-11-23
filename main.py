@@ -5,9 +5,11 @@ from kivy.app import App
 from kivy.graphics.transformation import Matrix
 from kivy.uix.slider import Slider
 from kivy.uix.button import Button
+from kivy.uix.label import Label
 from kivy.uix.widget import Widget
 from kivy.uix.scatter import Scatter
 from kivy.uix.image import Image
+from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
@@ -16,6 +18,11 @@ from kivy.uix.anchorlayout import AnchorLayout
 from kivy.graphics import Color, Ellipse, Line
 from kivy.uix.filechooser import FileChooserIconView
 
+from cPickle import load, dump
+from kivy.config import Config
+
+width = 1024
+height = 768
 
 classesToColours = {
    'knot' : (1,1,0,0.5), 
@@ -114,7 +121,7 @@ class Track():
         self.onActiveCallback = wrapped
         
     def getPointForLayer(self, layer):
-        if (self.points.has_key[layer]):
+        if (self.points.has_key(layer)):
             return self.points[layer]
         return None
     def setActive(self):
@@ -129,8 +136,11 @@ class Track():
 class Layer():
     def __init__(self, img):
         self.points = []
-        self.layout = FloatLayout(size=(600, 600))
+        self.src = img
+        self.layout = FloatLayout(size=(width-150, height))
         self.layout.add_widget(Image(source=img))
+    def getSource(self):
+        return self.src
     def addPoint(self, point):
         self.points.append(point)
         self.layout.add_widget(point.getDisplay())
@@ -154,25 +164,22 @@ for img in [
 
 class Menu:
     def __init__(self):
-        self.layout = FloatLayout(size=(200,600))
-        ypos = 0
-        
+        self.layout = FloatLayout(size=(200,height))
+        self._buttonYPos = 0
         size = (0.1,0.1)
-        button =Button(text='New Track', size_hint=size,pos_hint={'x':.0, 'y':.1*ypos})
-        ypos += 1
-        button.bind(on_press=self.addTrack)
-        self.layout.add_widget(button)
-        button2 =Button(text='New Point On Track', size_hint=size,pos_hint={'x':.0, 'y':.1*ypos})
-        ypos += 1
-        button2.bind(on_press=self.addPoint)
-        self.layout.add_widget(button2)
-        for classification in classesToColours.keys():
-            button = Button(text=classification, size_hint=size,pos_hint={'x':.0, 'y':.1*ypos})
-            ypos += 1
-            button.bind(on_press=self.setClass(classification))
+        def newbutton(text):
+            button = Button(text=text, size_hint=size,pos_hint={'x':.0, 'y':.1*self._buttonYPos})
             self.layout.add_widget(button)
-        self.showStatsButton = Button(text='Print Statistics', size_hint=size,pos_hint={'x':.0, 'y':.1*ypos})
-        self.layout.add_widget(self.showStatsButton)
+            self._buttonYPos += 1
+            return button
+        
+        self.addTrackButton = newbutton('New Track')
+        self.addPointButton = newbutton('New Point On Track')
+        for classification in classesToColours.keys():
+            button = newbutton(classification)
+            button.bind(on_press=self.setClass(classification))
+        self.showStatsButton = newbutton('statistics')
+        self.saveButton = newbutton('save')
 
     def onShowStats(self, callback):
         self.showStatsButton.bind(on_press=callback)
@@ -186,33 +193,40 @@ class Menu:
         self.onSetClassCallback = callback
 
     def onNewPoint(self, callback):
-        self.newPointCallback = callback
+        def wrapped(*args):
+            callback()
+        self.addPointButton.bind(on_press=wrapped)
         
-    def addPoint(self, more):
-        self.newPointCallback()
+    def onSave(self, callback):
+        def wrapped(*args):
+            callback()
+        self.saveButton.bind(on_press=wrapped)
 
     def onNewTrack(self, callback):
-        self.newTrackCallback = callback
-        
-    def addTrack(self, more):
-        self.newTrackCallback()
+        def wrapped(*args):
+            callback()
+        self.addTrackButton.bind(on_press=wrapped)
 
     def getContents(self):
         return self.layout
 
 
 class MyApp(App):
+
     def build(self):
+        print Config.get('graphics','width')
         Window.bind(on_key_down=self.on_key_down) 
-        self.tracks = []
+        self.loadData()
         self.activeTrack = None
         self.currentLayer = 0
-        self.appstructure = FloatLayout(size=(800,600))
+        self.appstructure = FloatLayout()
+        width, height = Window.size
         self.menu = Menu()
         self.menu.onNewTrack(self.newTrack)
         self.menu.onNewPoint(self.newPoint)
         self.menu.onSetClass(self.setClass)
         self.menu.onShowStats(self.showStats)
+        self.menu.onSave(self.save)
         self.core = Scatter(auto_bring_to_front=False)
         self.core.add_widget(self.getCurrentLayer().getContents())
         self.appstructure.add_widget(self.core)
@@ -222,8 +236,46 @@ class MyApp(App):
         self.zoomSlider.bind(on_touch_down=self.on_touch_down)
         self.zoomSlider.bind(on_touch_up=self.on_touch_up)
         self.appstructure.add_widget(self.zoomSlider)
+        self.imagelabel = Label(text=self.getCurrentLayer().getSource(), size_hint=(1,0.05), pos_hint={'y':0})
+        self.appstructure.add_widget(self.imagelabel)
         self.zooming = False
         return self.appstructure
+
+
+    def loadData(self):
+        self.tracks = []
+        try:
+            trackreps = load(open("saveFile.data"))
+        except:
+            return
+        for trackrep in trackreps:
+            track = Track(self.setActive)
+            for pointrep in trackrep['points']:
+                point = Point(pointrep[1])
+                track.addPoint(point, pointrep[0])
+                layers[pointrep[0]].addPoint(point)
+                point.setPos(pointrep[1])
+            track.setClassification(trackrep['classification'])
+            track.setInactive()
+            self.tracks.append(track)
+    
+
+    def save(self):
+        #save to file ...
+        def trackRepresentation(track):
+            trackrep = {'classification':track.getClassification()}
+            trackrep['points'] = []
+            for layer in range(len(layers)):
+                point = track.getPointForLayer(layer) 
+                if point:
+                    trackrep['points'].append((layer, point.getPos()))
+            return trackrep
+
+        savetracks = []
+        for track in self.tracks:
+            savetracks.append(trackRepresentation(track))
+        print savetracks
+        dump(savetracks, open("saveFile.data", 'w+'))
 
     def on_touch_down(self, slider, ev):
         if (slider.collide_point(ev.pos[0], ev.pos[1])):
@@ -243,9 +295,14 @@ class MyApp(App):
             classCounts[classification] = 0
         for track in self.tracks:
             classCounts[track.getClassification()] += 1
-        print "Statistics:"
+
+        text = ""
         for classification in classCounts:
-            print "    ", classification, " : ", classCounts[classification]
+            text +=  "    %s : %s \n"%(classification,classCounts[classification])
+        popup = Popup(title='Statistics',
+            content=Label(text=text),
+            size_hint=(None, None), size=(400, 400))
+        popup.open()
 
     def setClass(self, classification):
         if (self.activeTrack):
@@ -257,14 +314,14 @@ class MyApp(App):
         self.activeTrack = track
         track.setActive()
     def newPoint(self):
-        point = Point((200,200))
+        point = Point((width/2,height/2))
         if (self.activeTrack.addPoint(point, self.currentLayer)):
             self.getCurrentLayer().addPoint(point)
         
 
     def newTrack(self):
         track = Track(self.setActive)
-        point = Point((200,200))
+        point = Point((width/2, height/2))
         track.addPoint(point, self.currentLayer)
         track.setActive()
         track.setClassification('unclassified')
@@ -279,12 +336,14 @@ class MyApp(App):
             original = self.getCurrentLayer()
             self.currentLayer += 1
             new = self.getCurrentLayer()
+            self.imagelabel.text = new.getSource()
             self.swapLayer(original, new)
     def moveDownLayer(self):
         if (self.currentLayer > 0):
             original = self.getCurrentLayer()
             self.currentLayer -= 1
             new = self.getCurrentLayer()
+            self.imagelabel.text = new.getSource()
             self.swapLayer(original, new)
 
     def swapLayer(self, layer1, layer2):
@@ -297,5 +356,6 @@ class MyApp(App):
             self.moveDownLayer()
 
 if __name__ in ('__android__', '__main__'):
+    print Config.get('graphics','width')
     MyApp().run()
 
