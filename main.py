@@ -56,7 +56,7 @@ class MyPaintWidget(Widget):
 
 class Point():
     def __init__(self, pos):
-        self.scatter = Scatter(size_hint=(0.05,0.05))
+        self.scatter = Scatter(size_hint=(0.05,0.05), do_rotation=False, do_scale=False)
         self.widget = MyPaintWidget()
         self.widget.setClass('unclassified')
         self.widget.setActive()
