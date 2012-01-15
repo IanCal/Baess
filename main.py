@@ -168,7 +168,7 @@ class Layer():
 
 class Menu:
     def __init__(self):
-        self.layout = FloatLayout(size=(200,height))
+        self.layout = FloatLayout(size=(200,height), pos_hint={'x':.0, 'y':0.20})
         self._buttonYPos = 0
         size = (0.1,0.1)
         def newbutton(text):
