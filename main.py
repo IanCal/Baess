@@ -21,6 +21,8 @@ from kivy.uix.filechooser import FileChooserIconView
 from cPickle import load, dump
 from kivy.config import Config
 
+from os import listdir
+
 width = 1024
 height = 768
 
@@ -147,19 +149,6 @@ class Layer():
     def getContents(self):
         return self.layout
 
-layers = []
-for img in [ 
-        "images/L1CnorS1a3.tif.png", \
-        "images/L1CnorS2a3.tif.png", \
-        "images/L1CnorS3a3.tif.png", \
-        "images/L1CnorS4a3.tif.png", \
-        "images/L1CnorS5a3.tif.png", \
-        "images/L1CnorS6a3.tif.png", \
-        "images/L1CnorS7a3.tif.png", \
-        "images/L1CnorS8a3.tif.png", \
-        "images/L1CnorS9a3.tif.png", \
-        "images/L1CnorS10a3.tif.png"]:
-    layers.append(Layer(img))
 
 
 class Menu:
@@ -180,6 +169,7 @@ class Menu:
             button.bind(on_press=self.setClass(classification))
         self.showStatsButton = newbutton('statistics')
         self.saveButton = newbutton('save')
+
 
     def onShowStats(self, callback):
         self.showStatsButton.bind(on_press=callback)
@@ -242,7 +232,20 @@ class MyApp(App):
         return self.appstructure
 
 
+    def loadImages(self):
+        def isImage(fname):
+            for ext in [".png", ".jpg", ".tiff", ".jpeg", ".bmp"]:
+                if fname.lower().endswith(ext):
+                    return True
+            return False
+                    
+        self.layers = []
+        for img in sorted(listdir("images")):
+            if isImage(img):
+                self.layers.append(Layer("images/"+img))
+
     def loadData(self):
+        self.loadImages()
         self.tracks = []
         try:
             trackreps = load(open("saveFile.data"))
@@ -253,7 +256,7 @@ class MyApp(App):
             for pointrep in trackrep['points']:
                 point = Point(pointrep[1])
                 track.addPoint(point, pointrep[0])
-                layers[pointrep[0]].addPoint(point)
+                self.layers[pointrep[0]].addPoint(point)
                 point.setPos(pointrep[1])
             track.setClassification(trackrep['classification'])
             track.setInactive()
@@ -265,10 +268,10 @@ class MyApp(App):
         def trackRepresentation(track):
             trackrep = {'classification':track.getClassification()}
             trackrep['points'] = []
-            for layer in range(len(layers)):
-                point = track.getPointForLayer(layer) 
+            for layer in range(len(self.layers)):
+                point = track.getPointForLayer(self.layer) 
                 if point:
-                    trackrep['points'].append((layer, point.getPos()))
+                    trackrep['points'].append((self.layer, point.getPos()))
             return trackrep
 
         savetracks = []
@@ -329,10 +332,10 @@ class MyApp(App):
         self.setActive(track)
         self.getCurrentLayer().addPoint(point)
     def getCurrentLayer(self):
-        return layers[self.currentLayer]
+        return self.layers[self.currentLayer]
 
     def moveUpLayer(self):
-        if (self.currentLayer < (len(layers) - 1)):
+        if (self.currentLayer < (len(self.layers) - 1)):
             original = self.getCurrentLayer()
             self.currentLayer += 1
             new = self.getCurrentLayer()
