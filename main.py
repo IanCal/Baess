@@ -92,6 +92,14 @@ class Track():
         self.points = {}
         self.active = False
         self.setOnActive(activecallback)
+
+    def deletePoint(self, point, layer):
+        if (len(self.points) > 0):
+            if (self.points.has_key(layer)):
+                return False
+            if self.points.has_key(layer - 1) and self.points.has_key(layer + 1):
+                return False
+        
     def addPoint(self, point, layer):
         if (len(self.points) > 0):
             if (self.points.has_key(layer)):
@@ -110,6 +118,8 @@ class Track():
         self.points[layer] = point
         return True
     def getClassification(self):
+        if len(self.points) == 0:
+            return None
         return self.classification
 
     def setClassification(self, classification):
@@ -326,7 +336,8 @@ class MyApp(App):
         for classification in classesToColours:
             classCounts[classification] = 0
         for track in self.tracks:
-            classCounts[track.getClassification()] += 1
+            if track.getClassification():
+                classCounts[track.getClassification()] += 1
 
         text = ""
         for classification in classCounts:
