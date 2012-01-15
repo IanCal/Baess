@@ -151,6 +151,7 @@ class Layer():
 
 
 
+
 class Menu:
     def __init__(self):
         self.layout = FloatLayout(size=(200,height))
@@ -164,19 +165,47 @@ class Menu:
         
         self.addTrackButton = newbutton('New Track')
         self.addPointButton = newbutton('New Point On Track')
-        for classification in classesToColours.keys():
-            button = newbutton(classification)
-            button.bind(on_press=self.setClass(classification))
+        self.setClassButton = newbutton('Set Class')
+        self.setClassButton.bind(on_press=self.classificationMenu)
         self.showStatsButton = newbutton('statistics')
         self.saveButton = newbutton('save')
+
+    def classificationMenu(self, *args):
+        layout = BoxLayout(orientation='vertical')
+        popup = Popup(title='Classify',
+            content=layout,
+            size_hint=(None, None), size=(400, 600))
+        def newbutton(text, classification):
+            button = Button(text=text)
+            button.bind(on_press=self.setClass(classification, popup.dismiss))
+            layout.add_widget(button)
+        """
+           'knot' 
+           'bridge' 
+           'other' 
+           'sectioning_artifact' 
+           'cant_tell' 
+           'unclassified' 
+        """
+        newbutton("Can\'t tell", 'cant_tell')
+        newbutton("Knot", 'knot')
+        newbutton("Bridge", 'bridge')
+        newbutton("Sectioning artifact", 'sectioning_artifact')
+        newbutton("Other", 'other')
+        popup.open()
+            
+       
+        
 
 
     def onShowStats(self, callback):
         self.showStatsButton.bind(on_press=callback)
 
-    def setClass(self, classification):
+    def setClass(self, classification, onComplete=None):
         def wrapped(*args):
             self.onSetClassCallback(classification)
+            if (onComplete):
+                onComplete()
         return wrapped
 
     def onSetClass(self, callback):
@@ -269,9 +298,9 @@ class MyApp(App):
             trackrep = {'classification':track.getClassification()}
             trackrep['points'] = []
             for layer in range(len(self.layers)):
-                point = track.getPointForLayer(self.layer) 
+                point = track.getPointForLayer(layer) 
                 if point:
-                    trackrep['points'].append((self.layer, point.getPos()))
+                    trackrep['points'].append((layer, point.getPos()))
             return trackrep
 
         savetracks = []
