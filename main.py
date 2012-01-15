@@ -100,6 +100,8 @@ class Track():
             if self.points.has_key(layer - 1) and self.points.has_key(layer + 1):
                 return False
             del self.points[layer]
+            return True
+        return False
         
     def addPoint(self, point, layer):
         if (len(self.points) > 0):
@@ -182,6 +184,7 @@ class Menu:
         self.deletePointButton = newbutton('Delete Point')
         self.setClassButton = newbutton('Set Class')
         self.setClassButton.bind(on_press=self.classificationMenu)
+        self.findUnclassified = newbutton('Find\nUnclassified')
         self.showStatsButton = newbutton('Statistics')
         self.saveButton = newbutton('Save')
 
@@ -234,6 +237,10 @@ class Menu:
         def wrapped(*args):
             callback()
         self.deletePointButton.bind(on_press=wrapped)
+    def onFindUnclassified(self, callback):
+        def wrapped(*args):
+            callback()
+        self.findUnclassified.bind(on_press=wrapped)
         
     def onSave(self, callback):
         def wrapped(*args):
@@ -252,7 +259,6 @@ class Menu:
 class MyApp(App):
 
     def build(self):
-        print Config.get('graphics','width')
         Window.bind(on_key_down=self.on_key_down) 
         self.loadData()
         self.activeTrack = None
@@ -264,6 +270,7 @@ class MyApp(App):
         self.menu.onNewPoint(self.newPoint)
         self.menu.onDeletePoint(self.deletePoint)
         self.menu.onSetClass(self.setClass)
+        self.menu.onFindUnclassified(self.jumpToUnclassified)
         self.menu.onShowStats(self.showStats)
         self.menu.onSave(self.save)
         self.core = Scatter(auto_bring_to_front=False)
@@ -378,11 +385,12 @@ class MyApp(App):
         point = self.activeTrack.getPointForLayer(self.currentLayer)
         if (point == None):
             return
+        if not(self.activeTrack.deletePoint(self.currentLayer)):
+            return 
         self.getCurrentLayer().deletePoint(point)
-        self.activeTrack.deletePoint(self.currentLayer)
         if (self.activeTrack.getClassification() == None):
             self.tracks.remove(self.activeTrack)
-        self.activeTrack = None
+            self.activeTrack = None
         
 
     def newTrack(self):
@@ -397,24 +405,41 @@ class MyApp(App):
     def getCurrentLayer(self):
         return self.layers[self.currentLayer]
 
+    def jumpToUnclassified(self):
+        for track in self.tracks:
+            if track.getClassification() == 'unclassified':
+                for i, layer in enumerate(self.layers):
+                    if track.getPointForLayer(i):
+                        self.setActive(track)
+                        self.swapLayer(self.getCurrentLayer(), layer)
+                        self.currentLayer = i
+                        return
+        popup = Popup(title='',
+            content=Label(text="No unclassified tracks found!"),
+            size_hint=(None, None), size=(400, 400))
+        popup.open()
+                        
+            
+
     def moveUpLayer(self):
         if (self.currentLayer < (len(self.layers) - 1)):
             original = self.getCurrentLayer()
             self.currentLayer += 1
             new = self.getCurrentLayer()
-            self.imagelabel.text = new.getSource()
             self.swapLayer(original, new)
     def moveDownLayer(self):
         if (self.currentLayer > 0):
             original = self.getCurrentLayer()
             self.currentLayer -= 1
             new = self.getCurrentLayer()
-            self.imagelabel.text = new.getSource()
             self.swapLayer(original, new)
 
-    def swapLayer(self, layer1, layer2):
-        self.core.add_widget(layer2.getContents())
-        self.core.remove_widget(layer1.getContents())
+    def swapLayer(self, old, new):
+        if (old == new):
+            return
+        self.imagelabel.text = new.getSource()
+        self.core.add_widget(new.getContents())
+        self.core.remove_widget(old.getContents())
     def on_key_down(self, instance, code, *args):
         if (code == 275):
             self.moveUpLayer()
