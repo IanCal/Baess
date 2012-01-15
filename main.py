@@ -22,6 +22,7 @@ from cPickle import load, dump
 from kivy.config import Config
 
 from os import listdir
+from datetime import datetime
 
 width = 1024
 height = 768
@@ -318,8 +319,11 @@ class MyApp(App):
             track.setInactive()
             self.tracks.append(track)
     
-
     def save(self):
+        self.saveTo("backup-"+datetime.today().strftime("%Y-%m-%d-%H-%M-%S")+".data")
+        self.saveTo("saveFile.data")
+
+    def saveTo(self, fileName):
         #save to file ...
         def trackRepresentation(track):
             trackrep = {'classification':track.getClassification()}
@@ -334,7 +338,7 @@ class MyApp(App):
         for track in self.tracks:
             savetracks.append(trackRepresentation(track))
         print savetracks
-        dump(savetracks, open("saveFile.data", 'w+'))
+        dump(savetracks, open(fileName, 'w+'))
 
     def on_touch_down(self, slider, ev):
         if (slider.collide_point(ev.pos[0], ev.pos[1])):
