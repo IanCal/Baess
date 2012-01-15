@@ -93,12 +93,13 @@ class Track():
         self.active = False
         self.setOnActive(activecallback)
 
-    def deletePoint(self, point, layer):
+    def deletePoint(self, layer):
         if (len(self.points) > 0):
-            if (self.points.has_key(layer)):
+            if not (self.points.has_key(layer)):
                 return False
             if self.points.has_key(layer - 1) and self.points.has_key(layer + 1):
                 return False
+            del self.points[layer]
         
     def addPoint(self, point, layer):
         if (len(self.points) > 0):
@@ -156,6 +157,9 @@ class Layer():
     def addPoint(self, point):
         self.points.append(point)
         self.layout.add_widget(point.getDisplay())
+    def deletePoint(self, point):
+        self.points.remove(point)
+        self.layout.remove_widget(point.getDisplay())
     def getContents(self):
         return self.layout
 
@@ -175,6 +179,7 @@ class Menu:
         
         self.addTrackButton = newbutton('New Track')
         self.addPointButton = newbutton('New Point\nOn Track')
+        self.deletePointButton = newbutton('Delete Point')
         self.setClassButton = newbutton('Set Class')
         self.setClassButton.bind(on_press=self.classificationMenu)
         self.showStatsButton = newbutton('Statistics')
@@ -225,6 +230,10 @@ class Menu:
         def wrapped(*args):
             callback()
         self.addPointButton.bind(on_press=wrapped)
+    def onDeletePoint(self, callback):
+        def wrapped(*args):
+            callback()
+        self.deletePointButton.bind(on_press=wrapped)
         
     def onSave(self, callback):
         def wrapped(*args):
@@ -253,6 +262,7 @@ class MyApp(App):
         self.menu = Menu()
         self.menu.onNewTrack(self.newTrack)
         self.menu.onNewPoint(self.newPoint)
+        self.menu.onDeletePoint(self.deletePoint)
         self.menu.onSetClass(self.setClass)
         self.menu.onShowStats(self.showStats)
         self.menu.onSave(self.save)
@@ -357,9 +367,22 @@ class MyApp(App):
         self.activeTrack = track
         track.setActive()
     def newPoint(self):
+        if (self.activeTrack == None):
+            return
         point = Point((width/2,height/2))
         if (self.activeTrack.addPoint(point, self.currentLayer)):
             self.getCurrentLayer().addPoint(point)
+    def deletePoint(self):
+        if (self.activeTrack == None):
+            return
+        point = self.activeTrack.getPointForLayer(self.currentLayer)
+        if (point == None):
+            return
+        self.getCurrentLayer().deletePoint(point)
+        self.activeTrack.deletePoint(self.currentLayer)
+        if (self.activeTrack.getClassification() == None):
+            self.tracks.remove(self.activeTrack)
+        self.activeTrack = None
         
 
     def newTrack(self):
