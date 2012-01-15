@@ -164,11 +164,11 @@ class Menu:
             return button
         
         self.addTrackButton = newbutton('New Track')
-        self.addPointButton = newbutton('New Point On Track')
+        self.addPointButton = newbutton('New Point\nOn Track')
         self.setClassButton = newbutton('Set Class')
         self.setClassButton.bind(on_press=self.classificationMenu)
-        self.showStatsButton = newbutton('statistics')
-        self.saveButton = newbutton('save')
+        self.showStatsButton = newbutton('Statistics')
+        self.saveButton = newbutton('Save')
 
     def classificationMenu(self, *args):
         layout = BoxLayout(orientation='vertical')
