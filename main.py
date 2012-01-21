@@ -155,6 +155,7 @@ class Layer():
         self.src = img
         self.layout = FloatLayout(size=(width-150, height))
         self.layout.add_widget(Image(source=img))
+        self.setTransform(Matrix())
     def getSource(self):
         return self.src
     def addPoint(self, point):
@@ -165,6 +166,10 @@ class Layer():
         self.layout.remove_widget(point.getDisplay())
     def getContents(self):
         return self.layout
+    def setTransform(self, transform):
+        self.transform = transform
+    def getTransform(self):
+        return self.transform
 
 
 
@@ -444,6 +449,16 @@ class MyApp(App):
         self.imagelabel.text = new.getSource()
         self.core.add_widget(new.getContents())
         self.core.remove_widget(old.getContents())
+        # current transform is layer * user
+        layer = new.getTransform()
+        transform = self.core.transform
+        user = transform.multiply(layer.inverse())
+        # put back to start
+        self.core.apply_transform(self.core.transform_inv)
+        # apply layer transformation
+        self.core.apply_transform(old.getTransform())
+        # reapply user transformation
+        self.core.apply_transform(user)
     def on_key_down(self, instance, code, *args):
         if (code == 275):
             self.moveUpLayer()
