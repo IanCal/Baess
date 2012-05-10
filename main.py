@@ -64,6 +64,12 @@ class Point():
         self.scatter.x = pos[0]
         self.scatter.y = pos[1]
         self.scatter.add_widget(self.widget)
+        def on_move(ob, touch):
+            ob.x = min(max(ob.x, -10), ob.parent.size[0] + 10)
+            ob.y = min(max(ob.y, -10), ob.parent.size[1] + 10)
+        self.scatter.bind(on_touch_up=on_move)
+
+        
 
     def setOnPress(self, callback):
         self.scatter.bind(on_touch_down=callback)
