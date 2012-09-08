@@ -1,5 +1,5 @@
 import kivy
-kivy.require('1.0.9') # replace with your current kivy version !
+kivy.require('1.0.9')   # replace with your current kivy version !
 
 from kivy.app import App
 from kivy.graphics.transformation import Matrix
@@ -12,11 +12,9 @@ from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.anchorlayout import AnchorLayout
-from kivy.graphics import Color, Ellipse, Line
-from kivy.uix.filechooser import FileChooserIconView
+from kivy.graphics import Color, Ellipse
+from utilities.filesorter import sortByFirstNumber
 
 from cPickle import load, dump
 from kivy.config import Config
@@ -308,7 +306,7 @@ class MyApp(App):
             return False
                     
         self.layers = []
-        for img in sorted(listdir("images")):
+        for img in sortByFirstNumber(listdir("images")):
             if isImage(img):
                 self.layers.append(Layer("images/"+img))
 
